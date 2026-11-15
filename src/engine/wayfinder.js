@@ -1,5 +1,4 @@
-// The lights that show the way on: a lane of paper lotus lanterns afloat, set on the water by whoever went ahead, and
-// at the far end of every area an arch of hanging lanterns over the way out.
+// The lights that show the way on: an arch of hanging lanterns over the way out.
 //
 //   engine.guide = makeWayfinder(engine);      // src/main.js; the engine calls engine.guide.update(dt) every frame
 //
@@ -61,7 +60,6 @@ const LANE = 3.0, WANDER = 0.1;            // each row keeps this far from the c
 // one round the bow: weaving through the lane at speed, a lantern met dead ahead was pushed from one circle into the
 // other and rode the stem: 0.54 m from the boat's middle, measured.)
 const PART = { half: 1.55, body: [-2.0, 1.4], stem: 2.4, lead: 3.0, leadPerSpeed: 0.4, astern: 1.2, oar: 3.25, oarAt: [-1.8, -0.2], oarEase: 1.0 };
-const WICK = 0.09, MID = 0.30;             // the wick's and the light's middle's height in the lotus (the middle of its bud), metres
 const ARCH = { half: 4.0, foot: 0.6, rise: 4.4, before: 2 };      // the arch: half its width, its lowest lanterns' height, how far its top is above them; metres before the mist begins
 const PULSE = { every: 5.0, sweep: 3.2, width: 15, gain: 0.7 };   // the breath: seconds between two, seconds it takes to run the lane, metres wide, how much brighter
 // colours: in a dark place (the kept lamp's amber and its pale heart), and in a pale one (paint, not light)
@@ -356,10 +354,9 @@ export function makeWayfinder(engine) {
     mesh.name = name; mesh.frustumCulled = false; mesh.renderOrder = 1; mesh.userData.afterWater = true; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     return { mesh, u, aux };
   };
-  const lotus = makeBody(lotusGeometry(), LN, 'wayfinder lotuses', 1.0);
   const globes = makeBody(globeGeometry(), GATE, 'wayfinder arch', 0.6);
 
-  const LIGHTS = LN + GATE;
+  const LIGHTS = GATE;
   const gu = { ...fogU, uTime: sh.uTime, uMirror: { value: 0 }, uGlowSize: { value: 1.25 }, uPoolSize: { value: 1.9 }, uFlicker: { value: 1 },
     uFlame: { value: new THREE.Color(AMBER) }, uCore: { value: new THREE.Color(CORE) }, uGlow: { value: new THREE.Color(AMBER) },
     uFlameGain: { value: 2.4 }, uGlowGain: { value: 1 }, uPoolGain: { value: 0.3 }, uCover: { value: 0.3 } };
@@ -372,12 +369,12 @@ export function makeWayfinder(engine) {
   const iPos = new THREE.InstancedBufferAttribute(new Float32Array(LIGHTS * 4), 4), iAux = new THREE.InstancedBufferAttribute(new Float32Array(LIGHTS * 4), 4), iH = new THREE.InstancedBufferAttribute(new Float32Array(LIGHTS * 3), 3);
   iPos.setUsage(THREE.DynamicDrawUsage); iAux.setUsage(THREE.DynamicDrawUsage);
   lightGeo.setAttribute('iPos', iPos); lightGeo.setAttribute('iAux', iAux); lightGeo.setAttribute('iH', iH); lightGeo.instanceCount = LIGHTS;
-  for (let i = 0; i < LIGHTS; i++) { const g = i >= LN; iH.array[i * 3] = g ? 0 : WICK; iH.array[i * 3 + 1] = g ? 0 : MID; iH.array[i * 3 + 2] = g ? 0.6 : 0.9; iAux.array[i * 4 + 2] = g ? 0 : 1; }
+  for (let i = 0; i < LIGHTS; i++) { iH.array[i * 3] = 0; iH.array[i * 3 + 1] = 0; iH.array[i * 3 + 2] = 0.6; iAux.array[i * 4 + 2] = 0; }
   const lights = new THREE.Mesh(lightGeo, lightMat);
   lights.name = 'wayfinder lights'; lights.frustumCulled = false; lights.renderOrder = 3;
   // in the water's mirror the flame is drawn as its plain shine, which the water draws out into the stroke under it
   lights.onBeforeRender = () => { const m = engine.reflecting ? 1 : 0; if (gu.uMirror.value !== m) { gu.uMirror.value = m; lightMat.uniformsNeedUpdate = true; } };
-  group.add(lotus.mesh, globes.mesh, lights);
+  group.add(globes.mesh, lights);
   group.visible = false;
   engine.scene.add(group);
 
@@ -494,7 +491,7 @@ export function makeWayfinder(engine) {
     gu.uGlowGain.value = dark * dark * 0.62 * level * wantGain;
     gu.uPoolGain.value = dark * dark * 0.24 * level * wantGain;
     gu.uCover.value = 0.25 + 0.72 * pale;
-    for (const b of [lotus, globes]) {
+    for (const b of [globes]) {
       b.u.uHeart.value.copy(heart).lerp(deepHeart, pale); b.u.uMid.value.copy(midc).lerp(deepMid, pale); b.u.uTip.value.copy(tip).lerp(deepTip, pale);
       if (g && g.color) b.u.uMid.value.set(g.color);
       // the paper: lit from within in the dark; in a pale place a colour. (The round lanterns a little less: at the
@@ -571,16 +568,6 @@ export function makeWayfinder(engine) {
           shown++;
           if (debugAt !== null) { const n = state.nearest; n.hull = Math.min(n.hull, Math.hypot(x - boat.x, z - boat.z)); n.bow = Math.min(n.bow, Math.hypot(x - bowX, z - bowZ)); n.eye = Math.min(n.eye, Math.hypot(x - (boat.x - fx * 0.45), z - (boat.z - fz * 0.45))); }
         }
-        const h = water && water.heightAt ? water.heightAt(x, z) : 0, t = time + phase[j] * 3;
-        const y = (Number.isFinite(h) ? h : 0) + bob * (0.008 * Math.sin(t * 1.15) + 0.005 * Math.sin(t * 1.9 + 1.3));
-        _e.set(bob * 0.03 * Math.sin(t * 0.9 + 0.7), phase[j] + time * spin[j], bob * 0.026 * Math.sin(t * 1.3));      // (it turns slowly on the water, as a floating flower does)
-        _m.compose(_v.set(x, y, z), _q.setFromEuler(_e), _sc.setScalar(size[j] * big));
-        lotus.mesh.setMatrixAt(j, _m);
-        const A = lotus.aux.array; A[j * 4] = a * veil; A[j * 4 + 1] = br; A[j * 4 + 2] = phase[j];
-        iPos.array[j * 4] = x; iPos.array[j * 4 + 1] = y; iPos.array[j * 4 + 2] = z; iPos.array[j * 4 + 3] = size[j] * big;
-        iAux.array[j * 4] = phase[j]; iAux.array[j * 4 + 1] = a * veil; iAux.array[j * 4 + 3] = br;
-        // it sits in the water: now and then a pin ring leaves it
-        if (a > 0.3 && !calm && water && typeof water.ripple === 'function') { ring[j] -= dt; if (ring[j] <= 0) { ring[j] = 5 + 5 * ((j * 7 + Math.floor(time)) % 5) / 5; if (Math.abs(rel) < 30) water.ripple(x, z, 0.035, 0.1); } }
       }
     }
 
@@ -590,7 +577,7 @@ export function makeWayfinder(engine) {
     gate.there = Math.min(1, Math.max(0, gate.there + (gWant ? fade * 0.6 : -fade)));
     const gA = gate.there * veil, gBr = gate.on ? breath(gate.s) + (calm ? 0 : 0.1 * Math.sin(time * 0.8)) : 0;
     for (let i = 0; i < GATE; i++) {
-      const j = LN + i, th = Math.PI * (i + 0.5) / GATE, t = time + gph[i] * 3;
+      const j = i, th = Math.PI * (i + 0.5) / GATE, t = time + gph[i] * 3;
       const d = Math.cos(th) * gate.half + bob * 0.05 * Math.sin(t * 0.5), y = ARCH.foot + Math.sin(th) * ARCH.rise + bob * 0.06 * Math.sin(t * 0.7 + 1.0);
       const x = gate.x + gate.rx * d, z = gate.z + gate.rz * d;
       _e.set(bob * 0.05 * Math.sin(t * 0.6), gate.heading + gph[i], bob * 0.05 * Math.sin(t * 0.8 + 2.0));
@@ -602,10 +589,10 @@ export function makeWayfinder(engine) {
       if (gA > 0.01) shown++;
     }
     state.shown = shown;
-    lotus.mesh.instanceMatrix.needsUpdate = true; lotus.aux.needsUpdate = true; globes.mesh.instanceMatrix.needsUpdate = true; globes.aux.needsUpdate = true;
+    globes.mesh.instanceMatrix.needsUpdate = true; globes.aux.needsUpdate = true;
     iPos.needsUpdate = true; iAux.needsUpdate = true;
     globes.mesh.visible = gA > 0.004;
-    group.visible = shown > 0;
+    group.visible = gA > 0.004;
     if (debugAt !== null && !logged && time >= debugAt) {
       logged = true;
       const L0 = inst.lookEnd && realms.lookNow && realms.lookNow.fog ? realms.lookNow : inst.look;
