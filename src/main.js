@@ -21,6 +21,7 @@
 //   &handover=x.json   measure what crossing into each following area costs (frames while it is made ready, and its first frames); &prewarm=0 as it was
 import { missed, again, unfetched } from './engine/net.js';      // (first: from here on a file that does not arrive is asked for again)
 import { Engine } from './engine/engine.js';
+import { Gameplay } from './engine/gameplay.js';
 import { Vector2 as THREE_V2 } from 'three';
 import { REALMS } from './realms/index.js';
 
@@ -55,6 +56,7 @@ async function main() {
   // the rider's boat and the kept lamp are models: they are fetched before the engine is made (docs/life/boat.md)
   { const { loadBoat } = await import('./engine/boat-hero.js'), { loadLamp } = await import('./engine/lamp-hero.js'); await Promise.all([loadBoat(), loadLamp(['post', 'hook', 'bracket'])]); }
   const engine = new Engine(canvas, opts);
+  engine.gameplay = new Gameplay(engine);
   if (params.has('toe')) engine.post.forceToe = Number(params.get('toe')) || 0;      // &toe=1: try a realm with the tone curve's toe taken out (look.grade.toe)
   window.engine = engine;
   engine.dev = dev; engine.devPlay = dev ? params.get('play') : null;        // &play=name fires a realm's cue at once (src/engine/stage.js)

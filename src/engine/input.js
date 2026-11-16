@@ -34,9 +34,15 @@ export class Input {
       if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) this.actions.add('pause'); return; }
       if (!this.enabled) return;
       if (e.target && e.target.tagName === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return;   // let buttons work
-      if ([...KEY_THROTTLE_UP, ...KEY_THROTTLE_DOWN, ...KEY_LEFT, ...KEY_RIGHT, 'Space', 'KeyQ', 'KeyE', 'KeyR', 'KeyF'].includes(e.code)) e.preventDefault();
+      if ([...KEY_THROTTLE_UP, ...KEY_THROTTLE_DOWN, ...KEY_LEFT, ...KEY_RIGHT, 'Space', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyZ', 'KeyX', 'KeyC'].includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
-      if (!e.repeat) { if (e.code === 'Space') this.actions.add('centre'); if (e.code === 'KeyM') this.actions.add('music'); }
+      if (!e.repeat) {
+        if (e.code === 'Space') this.actions.add('centre');
+        if (e.code === 'KeyZ') this.actions.add('game-attack');
+        if (e.code === 'KeyX') this.actions.add('game-parry');
+        if (e.code === 'KeyC') this.actions.add('game-salvage');
+        if (e.code === 'KeyM') this.actions.add('music');
+      }
     });
     window.addEventListener('keyup', (e) => { this.keys.delete(e.code); if (e.key === 'Meta') this.keys.clear(); });
     const noThumb = () => { const t = this.touch; t.id = null; t.steer = 0; t.throttle = 0; t.kx = 0; t.ky = 0; };

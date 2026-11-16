@@ -48,7 +48,7 @@ export const WATER_LOOK = {
   mirrorDarken: 0.15,         // the reflection is this much darker than the world ...
   mirrorSaturate: 0.10,       // ... and this much richer: the water keeps a better copy
   reflectionTint: '#ffffff',
-  roughness: 0.12,            // 0 = razor-sharp reflections, 1 = soft smears
+  roughness: 0.16,            // 0 = razor-sharp reflections, 1 = soft smears
   streak: 1.0,                // vertical stretch of reflected lights
   mirror: 0,                  // 0..1: pull toward a perfectly still mirror
   column: -1,                 // the long columns under lights, set apart from `mirror`, `streak` and a front's `calm`: 0 = none, 1 = as on water that is not stilled; -1 = as those leave them
@@ -872,7 +872,9 @@ const FRAG = /* glsl */`
     F *= 1.0 - 0.55 * uVeil;
 
     // ---- the body of the water: shallow colour looking down near the boat, deep colour away
+    float surfaceBreakup = clamp((lace - 0.5) * 0.22 + length(wavelets) * 0.35, -0.12, 0.12);
     vec3 body = mix(uDeep, uShallow, pow(ndv, 1.5) * smoothstep(70.0, 4.0, dist));
+    body *= 1.0 + surfaceBreakup * (0.35 + 0.65 * (1.0 - F));
     vec3 lv = uLamp.xyz - vWorld; float ld2 = dot(lv, lv);
     float lampFall = uLamp.w * 0.012 * max(lv.y, 0.0) / (sqrt(ld2) * (ld2 + 0.4));
     body += uLampColor * lampFall * mix(uShallow, vec3(1.0), 0.4);
