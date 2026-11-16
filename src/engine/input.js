@@ -21,7 +21,7 @@ export class Input {
     this.lookYaw = 0; this.lookPitch = 0;             // where the rider is looking, relative to the bow
     this.dragging = false; this.lastLook = 0;          // seconds since the look was last moved by hand
     this.enabled = false;                              // the ride ignores input while a menu is open
-    this.actions = new Set();                          // one-shot actions since the last frame: 'pause', 'centre', 'music'
+    this.actions = new Set();                          // one-shot actions since the last frame: 'pause', 'centre', 'camera', 'music'
     this.touch = { steer: 0, throttle: 0, id: null, x0: 0, y0: 0, kx: 0, ky: 0 };      // kx, ky: where the thumb is from the stick's middle, in radii (for drawing it)
     this.held = { throttle: 0, steer: 0 };             // what the interface's buttons hold: see hold()
     this.lookGoal = null;                              // where a step of the head is turning to ({ yaw, pitch }: lookStep()), or null
@@ -34,9 +34,13 @@ export class Input {
       if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) this.actions.add('pause'); return; }
       if (!this.enabled) return;
       if (e.target && e.target.tagName === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return;   // let buttons work
-      if ([...KEY_THROTTLE_UP, ...KEY_THROTTLE_DOWN, ...KEY_LEFT, ...KEY_RIGHT, 'Space', 'KeyQ', 'KeyE', 'KeyR', 'KeyF'].includes(e.code)) e.preventDefault();
+      if ([...KEY_THROTTLE_UP, ...KEY_THROTTLE_DOWN, ...KEY_LEFT, ...KEY_RIGHT, 'Space', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyV'].includes(e.code)) e.preventDefault();
       this.keys.add(e.code);
-      if (!e.repeat) { if (e.code === 'Space') this.actions.add('centre'); if (e.code === 'KeyM') this.actions.add('music'); }
+      if (!e.repeat) {
+        if (e.code === 'Space') this.actions.add('centre');
+        if (e.code === 'KeyV') this.actions.add('camera');
+        if (e.code === 'KeyM') this.actions.add('music');
+      }
     });
     window.addEventListener('keyup', (e) => { this.keys.delete(e.code); if (e.key === 'Meta') this.keys.clear(); });
     const noThumb = () => { const t = this.touch; t.id = null; t.steer = 0; t.throttle = 0; t.kx = 0; t.ky = 0; };

@@ -29,6 +29,20 @@ Add a UI toggle that:
 
 The feature should work without changing realm content or adding a new rendering path.
 
+## Implemented: paddling camera views
+
+Press `V` while riding to cycle through four smooth camera positions:
+
+- **Boat** — the original first-person view;
+- **Starboard** — a low side view that keeps the paddle and lantern in frame;
+- **Bow** — a forward-mounted view for reading the waterway;
+- **Over-shoulder** — a raised view that shows the boat moving through the scene.
+
+The view offset is local to the boat eye rig, so mouse, touch, keyboard, and gamepad look
+controls remain available in every mode. Reduced-motion mode shortens the transition without
+removing the view choices. The next iteration can expose these names in the HUD and persist the
+selected view with the save-state feature.
+
 ## 3. Accessibility settings
 
 Extend the existing UI settings with:

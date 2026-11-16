@@ -10,6 +10,12 @@ import { gouacheShared } from './gouache.js';
 
 export const LAYER_DIRECT = 1, LAYER_MIRROR = 2;
 const LAYER_LATE = 3;        // (a phone's frame: what is drawn after the picture of the scene has been laid down: render)
+const CAMERA_VIEWS = [
+  { name: 'boat', position: [0, 0, 0], yaw: 0, pitch: 0 },
+  { name: 'starboard', position: [0.52, 0.16, 0.16], yaw: -0.18, pitch: -0.02 },
+  { name: 'bow', position: [0, 0.22, -0.72], yaw: 0, pitch: -0.08 },
+  { name: 'over-shoulder', position: [0, 0.58, 1.05], yaw: 0, pitch: -0.14 },
+];
 
 // One fog model everywhere: three.js fogs by depth along the view axis, the kit's shaders by distance. Use distance
 // for both, so a wall and a painted flat beside it fade alike whichever way the rider turns their head.
@@ -74,6 +80,8 @@ export class Engine {
     this._buildBoat = opts.buildBoat || buildBoat;
     this.boat.motion = this.reducedMotion ? 0.25 : 1;
     this.boat.eye.add(this.camera);
+    this.cameraView = 0;
+    this.cameraViewRate = this.reducedMotion ? 18 : 10;
     this.scene.add(this.boat.rig);
     this.input = new Input(canvas);
     // A phone's own way of making a frame (QUALITY.phone.light; docs/build/phone.md): the scene is drawn once, not
@@ -448,6 +456,10 @@ export class Engine {
     const input = this.input;
     if (input.take('pause')) this.emit('pause-key');
     if (input.take('music')) this.emit('music-key');
+    if (input.take('camera')) {
+      this.cameraView = (this.cameraView + 1) % CAMERA_VIEWS.length;
+      this.emit('camera-view', CAMERA_VIEWS[this.cameraView].name);
+    }
   }
 
   update(dt) {
@@ -476,10 +488,16 @@ export class Engine {
       realms.update(dt);
       if (this.guide) { try { this.guide.update(dt); } catch (err) { console.error('the wayfinder threw and was switched off', err); this.guide = null; } }
     }
-    // the rider's head
+    // the rider's head and the selectable paddling view
+    const view = CAMERA_VIEWS[this.cameraView];
+    const cameraTarget = view.position;
+    const cameraBlend = 1 - Math.exp(-dt * this.cameraViewRate);
+    this.camera.position.x += (cameraTarget[0] - this.camera.position.x) * cameraBlend;
+    this.camera.position.y += (cameraTarget[1] - this.camera.position.y) * cameraBlend;
+    this.camera.position.z += (cameraTarget[2] - this.camera.position.z) * cameraBlend;
     const k = 1 - Math.exp(-dt * 14);
-    this.camera.rotation.y += (input.lookYaw - this.camera.rotation.y) * k;
-    this.camera.rotation.x += (input.lookPitch - this.camera.rotation.x) * k;
+    this.camera.rotation.y += (input.lookYaw + view.yaw - this.camera.rotation.y) * k;
+    this.camera.rotation.x += (input.lookPitch + view.pitch - this.camera.rotation.x) * k;
     boat.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(this.shared.uCameraPos.value);
     this.shared.uBoat.value.set(boat.x, 0, boat.z);
