@@ -21,6 +21,7 @@
 //   &handover=x.json   measure what crossing into each following area costs (frames while it is made ready, and its first frames); &prewarm=0 as it was
 import { missed, again, unfetched } from './engine/net.js';      // (first: from here on a file that does not arrive is asked for again)
 import { Engine } from './engine/engine.js';
+import { readSave, writeSave } from './engine/save.js';
 import { Vector2 as THREE_V2 } from 'three';
 import { REALMS } from './realms/index.js';
 
@@ -41,10 +42,13 @@ const shot = params.has('perf') ? null : params.get('shot');
 const dev = params.has('realm') || !!shot;
 
 async function main() {
+  const saved = readSave();
+  if (saved.incompatible) window.__saveIncompatible = true;
   // (no quality asked for: a phone or a tablet gets the light one made for it, engine.js QUALITY.phone; &as=touch tries it on a desk)
   const finger = (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches) || params.get('as') === 'touch';
   const opts = { quality: params.get('q') || (finger && !shot && !params.has('perf') && !params.has('cine') ? 'phone' : undefined) };
   if (params.has('calm')) opts.reducedMotion = params.get('calm') !== '0';      // &calm=1: as if the rider had asked for reduced motion
+  else if (saved.value && typeof saved.value.settings.reducedMotion === 'boolean') opts.reducedMotion = saved.value.settings.reducedMotion;
   if (params.has('light')) opts.light = params.get('light') !== '0';            // &light=1: a phone's way of making a frame (docs/build/phone.md); &light=0: the ordinary way, on a phone
   if (shot || params.has('perf') || params.has('cine') || params.has('census')) opts.size = [num('shotw', 1600), num('shoth', 900)];
   const waterFile = params.get('water');
@@ -109,14 +113,19 @@ async function main() {
     }
     if (index < 0) index = 0;
   }
+  if (!params.has('realm') && saved.value) {
+    const savedIndex = REALMS.findIndex((x) => x.id === saved.value.realmId);
+    if (savedIndex >= 0) index = savedIndex;
+  }
   const inst = await realms.ensure(index);
   // A visitor's first place with parts of it missing (the connection went, and did not come back in time) is not
   // shown as if it were whole: the opening card says so and offers to try again (index.html; src/engine/net.js).
   if (window.__opening && !window.__opening.over && missed.length) throw new Error(`Failed to load ${missed.length} part${missed.length > 1 ? 's' : ''} of the ride (${missed.slice(0, 3).join(', ')}${missed.length > 3 ? ', ...' : ''})`);
   const L = inst.path.length;
-  const s = params.has('s') ? num('s', 0) : num('at', dev ? 0.2 : 0) * L;
-  realms.activate(inst, Math.min(L - 0.5, Math.max(dev ? 0.5 : 0, s)), { d: num('d', 0), turn: num('heading', 0) * Math.PI / 180 });
-  engine.input.lookYaw = num('yaw', 0) * Math.PI / 180; engine.input.lookPitch = num('pitch', 0) * Math.PI / 180;
+  const resume = !dev && !params.has('s') && !params.has('at') && saved.value && saved.value.realmId === inst.id ? saved.value : null;
+  const s = params.has('s') ? num('s', 0) : params.has('at') ? num('at', dev ? 0.2 : 0) * L : resume ? resume.route.distance : 0;
+  realms.activate(inst, Math.min(L - 0.5, Math.max(dev ? 0.5 : 0, s)), { d: resume ? resume.route.lateral : num('d', 0), turn: num('heading', 0) * Math.PI / 180 });
+  engine.input.lookYaw = resume ? resume.camera.yaw : num('yaw', 0) * Math.PI / 180; engine.input.lookPitch = resume ? resume.camera.pitch : num('pitch', 0) * Math.PI / 180;
   engine.camera.rotation.y = engine.input.lookYaw; engine.camera.rotation.x = engine.input.lookPitch;
 
   // A picture or a timing taken for judging waits for the shared brush texture. It arrives a moment after the first
@@ -324,6 +333,18 @@ async function main() {
   if (opening) opening.loaded();
   if (ui && ui.initUI) {
     ui.initUI(engine, { dev });
+    if (!dev) {
+      let since = 0;
+      const persist = () => {
+        const current = engine.realms && engine.realms.current, options = engine.ui && engine.ui.options;
+        if (!current || !engine.boat) return;
+        writeSave({ version: 1, realmId: current.id, route: { distance: engine.boat.s, lateral: engine.boat.d },
+          camera: { yaw: engine.input.lookYaw, pitch: engine.input.lookPitch },
+          settings: options ? { reducedMotion: options.reduceMotion, music: options.music, musicVolume: options.musicVolume, soundVolume: options.soundVolume } : {} });
+      };
+      engine.on('update', (dt) => { since += dt; if (since >= 1) { since = 0; persist(); } });
+      window.addEventListener('pagehide', persist);
+    }
     if (opening) { const lift = () => { if (document.hidden) setTimeout(lift, 2000); else opening.done(600); }; setTimeout(lift, 6000); }
   } else { engine.input.enabled = true; engine.start(); if (opening) opening.done(900); }
 }
