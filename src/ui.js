@@ -70,6 +70,7 @@
 
 import { makeLogo } from './logo.js';
 import { STICK_RADIUS } from './engine/input.js';
+import { clearSave } from './engine/save.js';
 
 /** The name of the ride. Everything the interface shows takes it from here (index.html repeats it in <title>). */
 export const RIDE_NAME = 'What the water keeps';
@@ -458,6 +459,11 @@ function mount(engine, { dev = false } = {}) {
     location.assign(url);
   });
   const optionsList = el('div', { class: 'options' }, musicSwitch.row, musicVolume.row, soundVolume.row, brightSlider.row, motionSwitch.row, lookSlider.row, buttonsSwitch.row, captionSwitch.row, qualityRow);
+  const resetSaveButton = el('button', { type: 'button', class: 'quiet-btn', text: window.__saveIncompatible ? 'Reset incompatible saved journey' : 'Reset saved journey' });
+  resetSaveButton.addEventListener('click', () => { clearSave(); window.__saveIncompatible = false; location.reload(); });
+  optionsList.append(optionRow(false, el('div', { class: 'option__text' },
+    el('span', { class: 'option__label', text: 'Saved journey' }),
+    el('span', { class: 'option__note', text: window.__saveIncompatible ? 'The saved journey could not be restored.' : 'Clear your saved place and camera.' })), resetSaveButton));
 
   // ---- title card: the name, one button, and two quiet words that open the controls and the options. Nothing is
   //      written under the name. (One line is kept out of sight for a screen reader, as what 'Push off' leads to:
