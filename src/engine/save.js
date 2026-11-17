@@ -4,6 +4,9 @@ export const SAVE_VERSION = 1;
 export const SAVE_KEY = 'quiet-current:journey:v1';
 
 const finite = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+const availableStorage = () => {
+  try { return globalThis.localStorage; } catch { return null; }
+};
 
 export function validateSave(value) {
   if (!value || value.version !== SAVE_VERSION || typeof value.realmId !== 'string' || !value.realmId) return null;
@@ -22,7 +25,7 @@ export function validateSave(value) {
   };
 }
 
-export function readSave(storage = globalThis.localStorage) {
+export function readSave(storage = availableStorage()) {
   try {
     const raw = storage && storage.getItem(SAVE_KEY);
     if (raw == null) return { value: null, incompatible: false };
@@ -33,12 +36,12 @@ export function readSave(storage = globalThis.localStorage) {
   }
 }
 
-export function writeSave(value, storage = globalThis.localStorage) {
+export function writeSave(value, storage = availableStorage()) {
   const valid = validateSave(value);
   if (!valid) return false;
   try { storage && storage.setItem(SAVE_KEY, JSON.stringify(valid)); return true; } catch { return false; }
 }
 
-export function clearSave(storage = globalThis.localStorage) {
+export function clearSave(storage = availableStorage()) {
   try { storage && storage.removeItem(SAVE_KEY); } catch { /* storage may be unavailable */ }
 }
